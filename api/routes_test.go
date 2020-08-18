@@ -44,7 +44,7 @@ func TestCreateRoutes(t *testing.T) {
 		assert.Equal(t, 11, backend.GetFetcherHistoryUrlId)
 	})
 
-	t.Run("GET on /api/fetcher/{id}/history with incorrect id returns error 404", func(t *testing.T) {
+	t.Run("GET on /api/fetcher/{id}/history with non-integer id returns error 404", func(t *testing.T) {
 		backend.Reset()
 		response, err := http.Get(server.URL + "/api/fetcher/9999999999999999999999999999999999999999999999999/history")
 		require.NoError(t, err)
@@ -68,6 +68,15 @@ func TestCreateRoutes(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)
 		assert.Equal(t, 2, backend.DeleteUrlUrlId)
+	})
+
+	t.Run("DELETE on /api/fetcher/{id} with non-integer id returns error 404", func(t *testing.T) {
+		backend.Reset()
+		client := &http.Client{}
+		request, err := http.NewRequest("DELETE", server.URL+"/api/fetcher/i", nil)
+		response, err := client.Do(request)
+		require.NoError(t, err)
+		assert.Equal(t, http.StatusNotFound, response.StatusCode)
 	})
 }
 
