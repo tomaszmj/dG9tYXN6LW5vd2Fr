@@ -1,59 +1,49 @@
 package api
 
 import (
-	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi"
 )
 
-func SetRoutes(r chi.Router) {
+type Backend interface {
+	GetAllUrls(writer http.ResponseWriter)
+	GetFetcherHistory(writer http.ResponseWriter, urlId int)
+	PostNewUrl(writer http.ResponseWriter, requestData io.ReadCloser)
+	DeleteUrl(writer http.ResponseWriter, urlId int)
+}
+
+func CreateRoutes(r chi.Router, backend Backend) {
 	r.Route("/api/fetcher", func(r chi.Router) {
-		r.Get("/", onGetAll)
-		r.Get("/{id}/history", onGetHistory)
-		r.Post("/", onPost)
-		r.Delete("/{id}", onDelete)
+		r.Get("/", func(writer http.ResponseWriter, request *http.Request) {
+			backend.GetAllUrls(writer)
+		})
+		r.Get("/{id}/history", func(writer http.ResponseWriter, request *http.Request) {
+			id, err := getIdFromRequest(request)
+			if err != nil {
+				http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			backend.GetFetcherHistory(writer, id)
+		})
+		r.Post("/", func(writer http.ResponseWriter, request *http.Request) {
+			backend.PostNewUrl(writer, request.Body)
+		})
+		r.Delete("/{id}", func(writer http.ResponseWriter, request *http.Request) {
+			id, err := getIdFromRequest(request)
+			if err != nil {
+				http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			backend.DeleteUrl(writer, id)
+		})
 	})
 }
 
-func onGetAll(writer http.ResponseWriter, request *http.Request) {
-	if _, err := writer.Write([]byte("get all urls\n")); err != nil {
-		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-func onGetHistory(writer http.ResponseWriter, request *http.Request) {
+func getIdFromRequest(request *http.Request) (int, error) {
 	idStr := chi.URLParam(request, "id")
 	idInt, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-	if _, err := writer.Write([]byte(fmt.Sprintf("get history from id %d\n", idInt))); err != nil {
-		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-func onPost(writer http.ResponseWriter, request *http.Request) {
-	data, err := ioutil.ReadAll(request.Body)
-	if err != nil {
-		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-	defer request.Body.Close()
-	if _, err := writer.Write([]byte(fmt.Sprintf("create: %s\n", data))); err != nil {
-		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	}
-}
-
-func onDelete(writer http.ResponseWriter, request *http.Request) {
-	idStr := chi.URLParam(request, "id")
-	idInt, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
-	}
-	if _, err := writer.Write([]byte(fmt.Sprintf("delete url id %d\n", idInt))); err != nil {
-		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-	}
+	return idInt, err
 }
