@@ -25,30 +25,30 @@ func TestCreateRoutes(t *testing.T) {
 		backend.Reset()
 		response, err := http.Get(server.URL)
 		require.NoError(t, err)
-		assert.Equal(t, response.StatusCode, http.StatusNotFound)
+		assert.Equal(t, http.StatusNotFound, response.StatusCode)
 	})
 
 	t.Run("GET on /api/fetcher triggers GetAllUrls", func(t *testing.T) {
 		backend.Reset()
 		response, err := http.Get(server.URL + "/api/fetcher")
 		require.NoError(t, err)
-		require.Equal(t, response.StatusCode, http.StatusOK)
-		assert.True(t, backend.GetAllUrlsCalled)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+		assert.True(t, backend.GetAllUrlsCalled, response.StatusCode)
 	})
 
 	t.Run("GET on /api/fetcher/{id}/history triggers GetFetcherHistory", func(t *testing.T) {
 		backend.Reset()
 		response, err := http.Get(server.URL + "/api/fetcher/11/history")
 		require.NoError(t, err)
-		require.Equal(t, response.StatusCode, http.StatusOK)
-		assert.Equal(t, backend.GetFetcherHistoryUrlId, 11)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+		assert.Equal(t, 11, backend.GetFetcherHistoryUrlId)
 	})
 
 	t.Run("GET on /api/fetcher/{id}/history with incorrect id returns error 404", func(t *testing.T) {
 		backend.Reset()
 		response, err := http.Get(server.URL + "/api/fetcher/9999999999999999999999999999999999999999999999999/history")
 		require.NoError(t, err)
-		assert.Equal(t, response.StatusCode, http.StatusNotFound)
+		assert.Equal(t, http.StatusNotFound, response.StatusCode)
 	})
 
 	t.Run("POST on /api/fetcher triggers PostNewUrl", func(t *testing.T) {
@@ -56,8 +56,8 @@ func TestCreateRoutes(t *testing.T) {
 		data := []byte(`{"url":"https://httpbin.org/range/15","interval":60}'`)
 		response, err := http.Post(server.URL+"/api/fetcher", "application/json", bytes.NewBuffer(data))
 		require.NoError(t, err)
-		require.Equal(t, response.StatusCode, http.StatusOK)
-		assert.Equal(t, backend.PostNewUrlRequestData, data)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+		assert.Equal(t, data, backend.PostNewUrlRequestData)
 	})
 
 	t.Run("DELETE on /api/fetcher/{id} triggers DeleteUrl", func(t *testing.T) {
@@ -66,8 +66,8 @@ func TestCreateRoutes(t *testing.T) {
 		request, err := http.NewRequest("DELETE", server.URL+"/api/fetcher/2", nil)
 		response, err := client.Do(request)
 		require.NoError(t, err)
-		require.Equal(t, response.StatusCode, http.StatusOK)
-		assert.Equal(t, backend.DeleteUrlUrlId, 2)
+		require.Equal(t, http.StatusOK, response.StatusCode)
+		assert.Equal(t, 2, backend.DeleteUrlUrlId)
 	})
 }
 
