@@ -1,7 +1,10 @@
 package api
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -9,41 +12,125 @@ import (
 )
 
 type Backend interface {
-	GetAllUrls(writer http.ResponseWriter)
-	GetFetcherHistory(writer http.ResponseWriter, urlId uint64)
-	PostNewUrl(writer http.ResponseWriter, requestData io.ReadCloser)
-	DeleteUrl(writer http.ResponseWriter, urlId uint64)
+	GetAllUrls() ([]ReturnedUrl, error)
+	GetFetcherHistory(urlId uint64) ([]UrlResponse, error)
+	PostNewUrl(url NewUrl) (UrlId, error)
+	DeleteUrl(urlId uint64) error
 }
 
-func CreateRoutes(r chi.Router, backend Backend) {
+const (
+	BackendErrorNotFound = "not found"
+	MaxPostBodySize      = 1000000
+)
+
+func Create(r chi.Router, backend Backend) {
+	a := api{
+		backend: backend,
+	}
 	r.Route("/api/fetcher", func(r chi.Router) {
-		r.Get("/", func(writer http.ResponseWriter, request *http.Request) {
-			backend.GetAllUrls(writer)
-		})
-		r.Get("/{id}/history", func(writer http.ResponseWriter, request *http.Request) {
-			id, err := getIdFromRequest(request)
-			if err != nil {
-				http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-				return
-			}
-			backend.GetFetcherHistory(writer, id)
-		})
-		r.Post("/", func(writer http.ResponseWriter, request *http.Request) {
-			backend.PostNewUrl(writer, request.Body)
-		})
-		r.Delete("/{id}", func(writer http.ResponseWriter, request *http.Request) {
-			id, err := getIdFromRequest(request)
-			if err != nil {
-				http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-				return
-			}
-			backend.DeleteUrl(writer, id)
-		})
+		r.Get("/", a.handleGetAllUrls)
+		r.Get("/{id}/history", a.handleGetFetcherHistory)
+		r.Post("/", a.handlePostNewUrl)
+		r.Delete("/{id}", a.handleDeleteUrl)
 	})
+}
+
+type api struct {
+	backend Backend
+}
+
+func (a *api) handleGetAllUrls(writer http.ResponseWriter, request *http.Request) {
+	urls, err := a.backend.GetAllUrls()
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	jsonData, err := json.Marshal(urls)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	if _, err := writer.Write(jsonData); err != nil {
+		writeErrorInHttpResponse(writer, err)
+	}
+}
+
+func (a *api) handleGetFetcherHistory(writer http.ResponseWriter, request *http.Request) {
+	id, err := getIdFromRequest(request)
+	if err != nil {
+		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	history, err := a.backend.GetFetcherHistory(id)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	jsonData, err := json.Marshal(history)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	if _, err := writer.Write(jsonData); err != nil {
+		writeErrorInHttpResponse(writer, err)
+	}
+}
+
+func (a *api) handlePostNewUrl(writer http.ResponseWriter, request *http.Request) {
+	limitedReader := io.LimitReader(request.Body, MaxPostBodySize)
+	data, err := ioutil.ReadAll(limitedReader)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	if len(data) == MaxPostBodySize {
+		http.Error(writer, http.StatusText(http.StatusRequestEntityTooLarge), http.StatusRequestEntityTooLarge)
+		return
+	}
+	var newUrl NewUrl
+	if err := json.Unmarshal(data, &newUrl); err != nil {
+		http.Error(writer, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		return
+	}
+	newUrlId, err := a.backend.PostNewUrl(newUrl)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	jsonData, err := json.Marshal(newUrlId)
+	if err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+	if _, err := writer.Write(jsonData); err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
+}
+
+func (a *api) handleDeleteUrl(writer http.ResponseWriter, request *http.Request) {
+	id, err := getIdFromRequest(request)
+	if err != nil {
+		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
+	}
+	if err := a.backend.DeleteUrl(id); err != nil {
+		writeErrorInHttpResponse(writer, err)
+		return
+	}
 }
 
 func getIdFromRequest(request *http.Request) (uint64, error) {
 	idStr := chi.URLParam(request, "id")
 	idInt, err := strconv.ParseUint(idStr, 10, 64)
 	return idInt, err
+}
+
+func writeErrorInHttpResponse(writer http.ResponseWriter, err error) {
+	if err.Error() == BackendErrorNotFound {
+		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+	} else {
+		// Internal server errors in theory should not happen - handle it just as a sanity check
+		http.Error(writer, fmt.Sprintf("Internal Server error: %s", err), http.StatusInternalServerError)
+	}
 }
