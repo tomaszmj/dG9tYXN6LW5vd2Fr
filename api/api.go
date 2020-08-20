@@ -45,14 +45,7 @@ func (a *api) handleGetAllUrls(writer http.ResponseWriter, request *http.Request
 		writeErrorInHttpResponse(writer, err)
 		return
 	}
-	jsonData, err := json.Marshal(urls)
-	if err != nil {
-		writeErrorInHttpResponse(writer, err)
-		return
-	}
-	if _, err := writer.Write(jsonData); err != nil {
-		writeErrorInHttpResponse(writer, err)
-	}
+	encodeJsonResponse(writer, urls)
 }
 
 func (a *api) handleGetFetcherHistory(writer http.ResponseWriter, request *http.Request) {
@@ -66,14 +59,7 @@ func (a *api) handleGetFetcherHistory(writer http.ResponseWriter, request *http.
 		writeErrorInHttpResponse(writer, err)
 		return
 	}
-	jsonData, err := json.Marshal(history)
-	if err != nil {
-		writeErrorInHttpResponse(writer, err)
-		return
-	}
-	if _, err := writer.Write(jsonData); err != nil {
-		writeErrorInHttpResponse(writer, err)
-	}
+	encodeJsonResponse(writer, history)
 }
 
 func (a *api) handlePostNewUrl(writer http.ResponseWriter, request *http.Request) {
@@ -97,15 +83,7 @@ func (a *api) handlePostNewUrl(writer http.ResponseWriter, request *http.Request
 		writeErrorInHttpResponse(writer, err)
 		return
 	}
-	jsonData, err := json.Marshal(newUrlId)
-	if err != nil {
-		writeErrorInHttpResponse(writer, err)
-		return
-	}
-	if _, err := writer.Write(jsonData); err != nil {
-		writeErrorInHttpResponse(writer, err)
-		return
-	}
+	encodeJsonResponse(writer, newUrlId)
 }
 
 func (a *api) handleDeleteUrl(writer http.ResponseWriter, request *http.Request) {
@@ -132,5 +110,13 @@ func writeErrorInHttpResponse(writer http.ResponseWriter, err error) {
 	} else {
 		// Internal server errors in theory should not happen - handle it just as a sanity check
 		http.Error(writer, fmt.Sprintf("Internal Server error: %s", err), http.StatusInternalServerError)
+	}
+}
+
+func encodeJsonResponse(writer http.ResponseWriter, data interface{}) {
+	encoder := json.NewEncoder(writer)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(data); err != nil {
+		writeErrorInHttpResponse(writer, err)
 	}
 }

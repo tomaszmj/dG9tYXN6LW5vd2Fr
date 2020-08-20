@@ -36,7 +36,7 @@ func TestApi(t *testing.T) {
 			require.Equal(t, http.StatusOK, response.StatusCode)
 			responseBytes, err := ioutil.ReadAll(response.Body)
 			require.NoError(t, err)
-			assert.Equal(t, `[{"id":11,"url":"https://httpbin.org/range/15","interval":60}]`, string(responseBytes))
+			assert.Equal(t, `[{"id":11,"url":"https://httpbin.org/range/15","interval":60}]`, stringWithoutWhitespace(responseBytes))
 		})
 		t.Run("with internal server error returns status 500", func(t *testing.T) {
 			backend.SetInternalError()
@@ -54,7 +54,7 @@ func TestApi(t *testing.T) {
 			require.Equal(t, http.StatusOK, response.StatusCode)
 			responseBytes, err := ioutil.ReadAll(response.Body)
 			require.NoError(t, err)
-			assert.Equal(t, `[{"response":null,"duration":0.571,"created_at":1559034638}]`, string(responseBytes))
+			assert.Equal(t, `[{"response":null,"duration":0.571,"created_at":1559034638}]`, stringWithoutWhitespace(responseBytes))
 		})
 		t.Run("with internal server error returns status 500", func(t *testing.T) {
 			backend.SetInternalError()
@@ -83,7 +83,7 @@ func TestApi(t *testing.T) {
 			require.Equal(t, http.StatusOK, response.StatusCode)
 			responseBytes, err := ioutil.ReadAll(response.Body)
 			require.NoError(t, err)
-			assert.Equal(t, `{"id":11}`, string(responseBytes))
+			assert.Equal(t, `{"id":11}`, stringWithoutWhitespace(responseBytes))
 		})
 		t.Run("with internal server error returns status 500", func(t *testing.T) {
 			backend.SetInternalError()
@@ -139,7 +139,17 @@ func TestApi(t *testing.T) {
 			assert.Equal(t, http.StatusInternalServerError, response.StatusCode)
 		})
 	})
+}
 
+func stringWithoutWhitespace(bytes []byte) string {
+	whitespaceChars := []rune(" \n") // it could be extended by other chars, but only " " and "\n" are in json here
+	mapFunc := func(r rune) rune {
+		if r == whitespaceChars[0] || r == whitespaceChars[1] {
+			return -1
+		}
+		return r
+	}
+	return strings.Map(mapFunc, string(bytes))
 }
 
 type fakeBackend struct {
