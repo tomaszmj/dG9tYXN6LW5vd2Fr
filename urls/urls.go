@@ -3,6 +3,7 @@ package urls
 import (
 	"fmt"
 	"net/url"
+	"sort"
 	"sync"
 
 	"fetcher/api"
@@ -48,6 +49,9 @@ func (u *Urls) GetAllUrls() ([]api.ReturnedUrl, error) {
 			Interval:    urlVal.Interval,
 		})
 		return true
+	})
+	sort.Slice(returnedUrls, func(i, j int) bool {
+		return returnedUrls[i].Id < returnedUrls[j].Id
 	})
 	return returnedUrls, nil
 }
