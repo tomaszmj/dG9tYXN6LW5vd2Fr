@@ -41,12 +41,12 @@ func TestCreateRoutes(t *testing.T) {
 		response, err := http.Get(server.URL + "/api/fetcher/11/history")
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)
-		assert.Equal(t, 11, backend.GetFetcherHistoryUrlId)
+		assert.Equal(t, uint64(11), backend.GetFetcherHistoryUrlId)
 	})
 
 	t.Run("GET on /api/fetcher/{id}/history with non-integer id returns error 404", func(t *testing.T) {
 		backend.Reset()
-		response, err := http.Get(server.URL + "/api/fetcher/9999999999999999999999999999999999999999999999999/history")
+		response, err := http.Get(server.URL + "/api/fetcher/id/history")
 		require.NoError(t, err)
 		assert.Equal(t, http.StatusNotFound, response.StatusCode)
 	})
@@ -67,7 +67,7 @@ func TestCreateRoutes(t *testing.T) {
 		response, err := client.Do(request)
 		require.NoError(t, err)
 		require.Equal(t, http.StatusOK, response.StatusCode)
-		assert.Equal(t, 2, backend.DeleteUrlUrlId)
+		assert.Equal(t, uint64(2), backend.DeleteUrlUrlId)
 	})
 
 	t.Run("DELETE on /api/fetcher/{id} with non-integer id returns error 404", func(t *testing.T) {
@@ -82,17 +82,17 @@ func TestCreateRoutes(t *testing.T) {
 
 type fakeBackend struct {
 	GetAllUrlsCalled       bool
-	GetFetcherHistoryUrlId int
+	GetFetcherHistoryUrlId uint64
 	PostNewUrlRequestData  []byte
-	DeleteUrlUrlId         int
+	DeleteUrlUrlId         uint64
 	Error                  error
 }
 
 func (f *fakeBackend) Reset() {
 	f.GetAllUrlsCalled = false
-	f.GetFetcherHistoryUrlId = -1
+	f.GetFetcherHistoryUrlId = 0
 	f.PostNewUrlRequestData = []byte{}
-	f.DeleteUrlUrlId = -1
+	f.DeleteUrlUrlId = 0
 	f.Error = nil
 }
 
@@ -100,7 +100,7 @@ func (f *fakeBackend) GetAllUrls(writer http.ResponseWriter) {
 	f.GetAllUrlsCalled = true
 }
 
-func (f *fakeBackend) GetFetcherHistory(writer http.ResponseWriter, urlId int) {
+func (f *fakeBackend) GetFetcherHistory(writer http.ResponseWriter, urlId uint64) {
 	f.GetFetcherHistoryUrlId = urlId
 }
 
@@ -108,6 +108,6 @@ func (f *fakeBackend) PostNewUrl(writer http.ResponseWriter, requestData io.Read
 	f.PostNewUrlRequestData, f.Error = ioutil.ReadAll(requestData)
 }
 
-func (f *fakeBackend) DeleteUrl(writer http.ResponseWriter, urlId int) {
+func (f *fakeBackend) DeleteUrl(writer http.ResponseWriter, urlId uint64) {
 	f.DeleteUrlUrlId = urlId
 }

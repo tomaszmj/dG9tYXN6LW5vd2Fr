@@ -10,9 +10,9 @@ import (
 
 type Backend interface {
 	GetAllUrls(writer http.ResponseWriter)
-	GetFetcherHistory(writer http.ResponseWriter, urlId int)
+	GetFetcherHistory(writer http.ResponseWriter, urlId uint64)
 	PostNewUrl(writer http.ResponseWriter, requestData io.ReadCloser)
-	DeleteUrl(writer http.ResponseWriter, urlId int)
+	DeleteUrl(writer http.ResponseWriter, urlId uint64)
 }
 
 func CreateRoutes(r chi.Router, backend Backend) {
@@ -42,8 +42,8 @@ func CreateRoutes(r chi.Router, backend Backend) {
 	})
 }
 
-func getIdFromRequest(request *http.Request) (int, error) {
+func getIdFromRequest(request *http.Request) (uint64, error) {
 	idStr := chi.URLParam(request, "id")
-	idInt, err := strconv.Atoi(idStr)
+	idInt, err := strconv.ParseUint(idStr, 10, 64)
 	return idInt, err
 }

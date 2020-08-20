@@ -32,7 +32,7 @@ func (f *fakeBackend) GetAllUrls(writer http.ResponseWriter) {
 	}
 }
 
-func (f *fakeBackend) GetFetcherHistory(writer http.ResponseWriter, urlId int) {
+func (f *fakeBackend) GetFetcherHistory(writer http.ResponseWriter, urlId uint64) {
 	if _, err := writer.Write([]byte(fmt.Sprintf("get history from id %d\n", urlId))); err != nil {
 		http.Error(writer, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
@@ -49,7 +49,7 @@ func (f *fakeBackend) PostNewUrl(writer http.ResponseWriter, requestData io.Read
 	}
 }
 
-func (f *fakeBackend) DeleteUrl(writer http.ResponseWriter, urlId int) {
+func (f *fakeBackend) DeleteUrl(writer http.ResponseWriter, urlId uint64) {
 	if _, err := writer.Write([]byte(fmt.Sprintf("delete url id %d\n", urlId))); err != nil {
 		http.Error(writer, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 	}
