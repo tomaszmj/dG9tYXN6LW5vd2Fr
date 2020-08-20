@@ -9,7 +9,7 @@ import (
 
 // Returned by PostNewUrl
 type UrlId struct {
-	Id int `json:"id"`
+	Id uint64 `json:"id"`
 }
 
 // Request body in PostNewUrl
@@ -20,7 +20,7 @@ type NewUrl struct {
 
 // Returned by GetAllUrls
 type ReturnedUrl struct {
-	Id          int    `json:"id"`
+	Id          uint64 `json:"id"`
 	UrlAsString string `json:"url"`
 	Interval    int    `json:"interval"`
 }
