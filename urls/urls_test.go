@@ -15,7 +15,7 @@ import (
 func TestUrls(t *testing.T) {
 	worker := &fakeWorker{}
 	urlsBackend := urls.New(worker)
-	assert.NotNil(t, urlsBackend)
+
 	t.Run("PostNewUrl assigns new id", func(t *testing.T) {
 		u, err := url.Parse("https://httpbin.org/range/15")
 		require.NoError(t, err)
@@ -26,12 +26,14 @@ func TestUrls(t *testing.T) {
 			assert.Equal(t, id, api.UrlId{Id: uint64(i)})
 		}
 	})
+
 	t.Run("DeleteUrl returns error on non-existing id", func(t *testing.T) {
 		assert.Error(t, urlsBackend.DeleteUrl(9))
 	})
 	t.Run("DeleteUrl returns no error on existing url", func(t *testing.T) {
 		assert.NoError(t, urlsBackend.DeleteUrl(1))
 	})
+
 	t.Run("GetAllUrls returns all urlsBackend excluding deleted ones", func(t *testing.T) {
 		listedUrls, err := urlsBackend.GetAllUrls()
 		require.NoError(t, err)
@@ -59,6 +61,7 @@ func TestUrls(t *testing.T) {
 		}
 		assert.Equal(t, expectedUrls, listedUrls)
 	})
+
 	t.Run("GetFetcherHistory returns error on non-existing url", func(t *testing.T) {
 		_, err := urlsBackend.GetFetcherHistory(9)
 		assert.Error(t, err)
