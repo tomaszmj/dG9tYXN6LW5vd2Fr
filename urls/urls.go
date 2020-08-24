@@ -9,19 +9,30 @@ import (
 	"fetcher/api"
 )
 
-func New() *Urls {
-	return &Urls{}
+type Worker interface {
+	NewFetchRoutine(newUrl api.NewUrl, onFetch func(response api.UrlResponse), stopChan chan struct{})
+}
+
+func New(w Worker) *Urls {
+	u := &Urls{
+		worker: w,
+		urlMap: make(map[uint64]*urlData),
+	}
+	return u
 }
 
 type Urls struct {
-	data      sync.Map // map[uint64]*urlData
-	idManager urlIdManager
+	worker      Worker
+	urlMap      map[uint64]*urlData
+	urlMapMutex sync.RWMutex
+	idManager   urlIdManager
 }
 
 type urlData struct {
-	Url       *url.URL
-	Interval  int
-	Responses []api.UrlResponse
+	Url                *url.URL
+	Interval           int
+	Responses          []api.UrlResponse
+	stopFetcherChannel chan struct{}
 }
 
 type urlIdManager struct {
@@ -39,17 +50,16 @@ func (i *urlIdManager) NextId() uint64 {
 }
 
 func (u *Urls) GetAllUrls() ([]api.ReturnedUrl, error) {
-	returnedUrls := make([]api.ReturnedUrl, 0)
-	u.data.Range(func(key, value interface{}) bool {
-		urlId := key.(uint64)
-		urlVal := value.(*urlData)
+	u.urlMapMutex.RLock()
+	returnedUrls := make([]api.ReturnedUrl, 0, len(u.urlMap))
+	for id, urlData := range u.urlMap {
 		returnedUrls = append(returnedUrls, api.ReturnedUrl{
-			Id:          urlId,
-			UrlAsString: urlVal.Url.String(),
-			Interval:    urlVal.Interval,
+			Id:          id,
+			UrlAsString: urlData.Url.String(),
+			Interval:    urlData.Interval,
 		})
-		return true
-	})
+	}
+	u.urlMapMutex.RUnlock()
 	sort.Slice(returnedUrls, func(i, j int) bool {
 		return returnedUrls[i].Id < returnedUrls[j].Id
 	})
@@ -57,30 +67,49 @@ func (u *Urls) GetAllUrls() ([]api.ReturnedUrl, error) {
 }
 
 func (u *Urls) GetFetcherHistory(urlId uint64) ([]api.UrlResponse, error) {
-	value, ok := u.data.Load(urlId)
+	u.urlMapMutex.RLock()
+	defer u.urlMapMutex.RUnlock()
+	urlData, ok := u.urlMap[urlId]
 	if !ok {
 		return []api.UrlResponse{}, fmt.Errorf(api.BackendErrorNotFound)
 	}
-	urlVal := value.(*urlData)
-	return urlVal.Responses, nil
+	returnedResponses := make([]api.UrlResponse, len(urlData.Responses))
+	copy(returnedResponses, urlData.Responses) // copy all responses to avoid races (urlData may be modified later)
+	return urlData.Responses, nil
 }
 
 func (u *Urls) PostNewUrl(url api.NewUrl) (api.UrlId, error) {
 	newId := u.idManager.NextId()
-	newUrlData := &urlData{
-		Url:       url.Url,
-		Interval:  url.Interval,
-		Responses: make([]api.UrlResponse, 0),
+	newUrlMapEntry := &urlData{
+		Url:                url.Url,
+		Interval:           url.Interval,
+		Responses:          []api.UrlResponse{},
+		stopFetcherChannel: make(chan struct{}, 1),
 	}
-	u.data.Store(newId, newUrlData)
+	u.urlMapMutex.Lock()
+	defer u.urlMapMutex.Unlock()
+	u.urlMap[newId] = newUrlMapEntry
+	onFetch := func(response api.UrlResponse) {
+		u.urlMapMutex.Lock()
+		defer u.urlMapMutex.Unlock()
+		urlEntry, ok := u.urlMap[newId]
+		if !ok {
+			return // this may happen because stopFetcherChannel is buffered (DeleteUrl may exit before worker goroutine ends)
+		}
+		urlEntry.Responses = append(urlEntry.Responses, response)
+	}
+	u.worker.NewFetchRoutine(url, onFetch, newUrlMapEntry.stopFetcherChannel) // this should run worker in new goroutine
 	return api.UrlId{Id: newId}, nil
 }
 
 func (u *Urls) DeleteUrl(urlId uint64) error {
-	_, ok := u.data.Load(urlId)
+	u.urlMapMutex.Lock()
+	defer u.urlMapMutex.Unlock()
+	deletedUrlData, ok := u.urlMap[urlId]
 	if !ok {
 		return fmt.Errorf(api.BackendErrorNotFound)
 	}
-	u.data.Delete(urlId)
+	deletedUrlData.stopFetcherChannel <- struct{}{}
+	delete(u.urlMap, urlId)
 	return nil
 }
