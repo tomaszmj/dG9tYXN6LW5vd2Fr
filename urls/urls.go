@@ -73,13 +73,27 @@ func (u *Urls) GetFetcherHistory(urlId uint64) ([]api.UrlResponse, error) {
 		u.urlMapMutex.RUnlock()
 		return []api.UrlResponse{}, fmt.Errorf(api.BackendErrorNotFound)
 	}
-	returnedResponses := make([]api.UrlResponse, len(urlData.Responses))
-	copy(returnedResponses, urlData.Responses) // copy all responses to avoid races (urlData may be modified later)
+	returnedResponses := make([]api.UrlResponse, 0, len(urlData.Responses))
+	// deep-copy all responses to avoid races (urlData may be modified later)
+	for _, response := range urlData.Responses {
+		var responsePtr *string
+		if response.Response == nil {
+			responsePtr = nil
+		} else {
+			responseAsString := *response.Response
+			responsePtr = &responseAsString
+		}
+		returnedResponses = append(returnedResponses, api.UrlResponse{
+			Response:  responsePtr,
+			Duration:  response.Duration,
+			CreatedAt: response.CreatedAt,
+		})
+	}
 	u.urlMapMutex.RUnlock()
 	sort.Slice(returnedResponses, func(i, j int) bool {
 		return returnedResponses[i].CreatedAt.Before(returnedResponses[j].CreatedAt)
 	})
-	return urlData.Responses, nil
+	return returnedResponses, nil
 }
 
 func (u *Urls) PostNewUrl(url api.NewUrl) (api.UrlId, error) {
