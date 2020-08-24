@@ -4,17 +4,19 @@
 ## Building and testing
 Run unit tests: ``go test ./api/... ./urls/...``  
 Run integration test: ``go test -v -race worker/worker_integration_test.go``  
-Build and run main program: ``cd cmd/server``, ``go build``, ``./server``
+Build and run main program: ``cd cmd/server``, ``go build``, ``./server``  
 Run e2e tests manually with curl - while the server is running, execute some commands from the script ``./manual_test.sh``  
 
 ## API
 #### Create new URL: POST/api/fetcher {"url":(string),"interval":(int)}
 ``$ curl -si 127.0.0.1:8080/api/fetcher -X POST -d '{"url":"https://httpbin.org/range/15","interval":4}``
-``{ "id": 1 }``
+```
+{ "id": 1 }
+```
 
 
 #### Delete URL: DELETE /api/fetcher/(id)
-``$ curl -s 127.0.0.1:8080/api/fetcher/0 -X DELETE``
+``$ curl -s 127.0.0.1:8080/api/fetcher/0 -X DELETE``  
 Response: http 200 if url was deleted, http 404 if url did not exist
 
 
