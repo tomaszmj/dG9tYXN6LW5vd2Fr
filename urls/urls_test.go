@@ -20,7 +20,7 @@ func TestUrls(t *testing.T) {
 		u, err := url.Parse("https://httpbin.org/range/15")
 		require.NoError(t, err)
 		for i := 0; i < 5; i++ {
-			newUrl := api.NewUrl{Url: u, Interval: 5 + i}
+			newUrl := api.NewUrl{Url: u, IntervalSeconds: 5 + i}
 			id, err := urlsBackend.PostNewUrl(newUrl)
 			require.NoError(t, err)
 			assert.Equal(t, id, api.UrlId{Id: uint64(i)})

@@ -14,8 +14,8 @@ type UrlId struct {
 
 // Request body in PostNewUrl
 type NewUrl struct {
-	Url      *url.URL `json:"url"`
-	Interval int      `json:"interval"`
+	Url             *url.URL `json:"url"`
+	IntervalSeconds int      `json:"interval"`
 }
 
 // Returned by GetAllUrls
@@ -56,12 +56,12 @@ func (n *NewUrl) UnmarshalJSON(j []byte) error {
 			if !ok {
 				return fmt.Errorf("unexpected value for key interval (expected number, got %v as %T) in json %s", value, value, j)
 			}
-			n.Interval = int(intervalFloat)
-			if float64(n.Interval) != intervalFloat {
+			n.IntervalSeconds = int(intervalFloat)
+			if float64(n.IntervalSeconds) != intervalFloat {
 				return fmt.Errorf("invalid interval in new url - must be positive integer, got %f", intervalFloat)
 			}
-			if n.Interval <= 0 {
-				return fmt.Errorf("invalid interval in new url - must be positive integer, got %d", n.Interval)
+			if n.IntervalSeconds <= 0 {
+				return fmt.Errorf("invalid interval in new url - must be positive integer, got %d", n.IntervalSeconds)
 			}
 		}
 	}

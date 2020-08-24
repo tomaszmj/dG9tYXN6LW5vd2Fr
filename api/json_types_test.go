@@ -27,7 +27,7 @@ func TestJsonMarshalling(t *testing.T) {
 			require.NoError(t, err)
 			var newUrl api.NewUrl
 			require.NoError(t, json.Unmarshal(data, &newUrl))
-			assert.Equal(t, api.NewUrl{Url: expectedUrl, Interval: 60}, newUrl)
+			assert.Equal(t, api.NewUrl{Url: expectedUrl, IntervalSeconds: 60}, newUrl)
 		})
 		t.Run("with invalid json syntax", func(t *testing.T) {
 			data := []byte(`{"url":"https://httpbin.org/range/15","interval":60`)

@@ -82,7 +82,7 @@ func (u *Urls) PostNewUrl(url api.NewUrl) (api.UrlId, error) {
 	newId := u.idManager.NextId()
 	newUrlMapEntry := &urlData{
 		Url:                url.Url,
-		Interval:           url.Interval,
+		Interval:           url.IntervalSeconds,
 		Responses:          []api.UrlResponse{},
 		stopFetcherChannel: make(chan struct{}, 1),
 	}
