@@ -68,13 +68,17 @@ func (u *Urls) GetAllUrls() ([]api.ReturnedUrl, error) {
 
 func (u *Urls) GetFetcherHistory(urlId uint64) ([]api.UrlResponse, error) {
 	u.urlMapMutex.RLock()
-	defer u.urlMapMutex.RUnlock()
 	urlData, ok := u.urlMap[urlId]
 	if !ok {
+		u.urlMapMutex.RUnlock()
 		return []api.UrlResponse{}, fmt.Errorf(api.BackendErrorNotFound)
 	}
 	returnedResponses := make([]api.UrlResponse, len(urlData.Responses))
 	copy(returnedResponses, urlData.Responses) // copy all responses to avoid races (urlData may be modified later)
+	u.urlMapMutex.RUnlock()
+	sort.Slice(returnedResponses, func(i, j int) bool {
+		return returnedResponses[i].CreatedAt.Before(returnedResponses[j].CreatedAt)
+	})
 	return urlData.Responses, nil
 }
 
