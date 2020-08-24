@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -78,10 +77,9 @@ func makeHttpRequest(url *url.URL) (api.UrlResponse, error) {
 	response, err := http.DefaultClient.Do(request)
 	t2 := time.Now()
 	duration := t2.Sub(t1)
-	if errors.Is(err, context.DeadlineExceeded) {
+	if err != nil {
+		//errors.Is(err, context.DeadlineExceeded) or any other error - all are treated the same way
 		return api.UrlResponse{Response: nil, Duration: duration, CreatedAt: createdAt}, nil
-	} else if err != nil {
-		return api.UrlResponse{}, fmt.Errorf("unexpected error on fetching url %s: %s", url.String(), err)
 	}
 	if response.StatusCode != http.StatusOK {
 		return api.UrlResponse{Response: nil, Duration: duration, CreatedAt: createdAt}, nil
